@@ -68,13 +68,7 @@ phases:
 
       - echo "Sending formatted SNS notification..."
       - |
-        MESSAGE="✅ CodeBuild completed for *DevSecOps GenAI* ✅
-
-📦 JaCoCo Report (ZIP): $JACOCO_ZIP_URL
-
-🔍 Trivy SCA Report: $SCA_URL
-
-🔐 SonarCloud Dashboard: https://sonarcloud.io/project/overview?id=sairam18011996_devsecops-genai"
+        MESSAGE="✅ CodeBuild completed for *DevSecOps GenAI* ✅\n\n📦 JaCoCo Report (ZIP): $JACOCO_ZIP_URL\n\n🔍 Trivy SCA Report: $SCA_URL\n\n🔐 SonarCloud Dashboard: https://sonarcloud.io/project/overview?id=sairam18011996_devsecops-genai"
         aws sns publish \
           --region eu-north-1 \
           --topic-arn "$SNS_TOPIC_ARN" \
