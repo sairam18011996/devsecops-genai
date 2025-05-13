@@ -2,9 +2,9 @@ version: 0.2
 
 env:
   variables:
-    REPORT_BUCKET: devsecopsreports
+    REPORT_BUCKET: devsecopspocreports
     REPORT_PATH: devsecops-genai/reports
-    SNS_TOPIC_ARN: arn:aws:sns:us-east-1:310188667383:SimpleCarRentalApp-CodeBuild-Notifications
+    SNS_TOPIC_ARN: arn:aws:sns:eu-north-1:545779432619:devsecops
 
 phases:
   install:
@@ -32,7 +32,7 @@ phases:
       - mvn clean verify
 
       - echo Fetching SonarCloud token from AWS SSM Parameter Store...
-      - export SONAR_TOKEN=$(aws ssm get-parameter --name /devsecops/sonar/token --with-decryption --query "Parameter.Value" --output text)
+      - export SONAR_TOKEN=$(aws ssm get-parameter --name /devsecops-genai/sonar/token --with-decryption --query "Parameter.Value" --output text)
       - echo Resolving Git branch for SonarCloud...
       - |
         if [[ "$CODEBUILD_SOURCE_VERSION" == refs/heads/* ]]; then
@@ -43,8 +43,8 @@ phases:
         echo Using branch: $BRANCH_NAME
 
         mvn sonar:sonar \
-          -Dsonar.projectKey=SimpleCarRentalApp \
-          -Dsonar.organization=praveenmummella \
+          -Dsonar.projectKey=sairam18011996_devsecops-genai \
+          -Dsonar.organization=sairam \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.login=$SONAR_TOKEN \
           -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
@@ -63,14 +63,20 @@ phases:
       - aws s3 cp jacoco-report.zip s3://$REPORT_BUCKET/$REPORT_PATH/jacoco-report.zip --sse AES256
       
       - echo "Generating presigned URLs..."
-      - export JACOCO_ZIP_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/jacoco-report.zip --region us-east-1 --expires-in 86400)
-      - export SCA_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/trivy-sca/trivy-scan-report.json --region us-east-1 --expires-in 86400)
+      - export JACOCO_ZIP_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/jacoco-report.zip --region eu-north-1 --expires-in 86400)
+      - export SCA_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/trivy-sca/trivy-scan-report.json --region eu-north-1 --expires-in 86400)
 
       - echo "Sending formatted SNS notification..."
       - |
-        MESSAGE="✅ CodeBuild completed for *SimpleCarRentalApp* ✅\n\n📦 JaCoCo Report (ZIP): $JACOCO_ZIP_URL\n\n🔍 Trivy SCA Report: $SCA_URL\n\n🔐 SonarCloud Dashboard: https://sonarcloud.io/project/overview?id=SimpleCarRentalApp"
+        MESSAGE="✅ CodeBuild completed for *DevSecOps GenAI* ✅
+
+📦 JaCoCo Report (ZIP): $JACOCO_ZIP_URL
+
+🔍 Trivy SCA Report: $SCA_URL
+
+🔐 SonarCloud Dashboard: https://sonarcloud.io/project/overview?id=sairam18011996_devsecops-genai"
         aws sns publish \
-          --region us-east-1 \
+          --region eu-north-1 \
           --topic-arn "$SNS_TOPIC_ARN" \
           --subject "✅ CodeBuild Success: DevSecOps Reports Ready" \
           --message "$MESSAGE"
@@ -80,7 +86,7 @@ phases:
         aws lambda invoke \
           --function-name SendReportsToSecurityHub \
           --invocation-type Event \
-          --region us-east-1 \
+          --region eu-north-1 \
           --payload '{}' \
           output.json
       - echo "Lambda invoked successfully."
