@@ -2,8 +2,8 @@ version: 0.2
 
 env:
   variables:
-    REPORT_BUCKET: devsecopspocreports
-    REPORT_PATH: SSimpleCarRentalApp-Terraform/reports
+    REPORT_BUCKET: devsecopsreports
+    REPORT_PATH: devsecops-genai/reports
     SNS_TOPIC_ARN: arn:aws:sns:us-east-1:310188667383:SimpleCarRentalApp-CodeBuild-Notifications
 
 phases:
