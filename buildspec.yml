@@ -2,7 +2,7 @@ version: 0.2
 
 env:
   variables:
-    REPORT_BUCKET: devsecopspocreports
+    REPORT_BUCKET: devsecopsreports
     REPORT_PATH: devsecops-genai/reports
     SNS_TOPIC_ARN: arn:aws:sns:eu-north-1:545779432619:devsecops
 
@@ -53,7 +53,7 @@ phases:
   post_build:
     commands:
       - echo "Uploading JaCoCo and Trivy SCA reports to S3 with encryption..."
-      - aws s3 cp target/site/jacoco/ s3://$REPORT_BUCKET/$REPORT_PATH/jacoco/ --recursive --sse AES256
+      - aws s3 cp target/site/jacoco/ s3://$REPORT_BUCKET/$REPORT_PATH/jacoco/ --recursive --sse AES256 --no-guess-mime-type
       - aws s3 cp trivy-reports/ s3://$REPORT_BUCKET/$REPORT_PATH/trivy-sca/ --recursive --sse AES256
 
       - echo "Zipping JaCoCo report..."
