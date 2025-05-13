@@ -75,15 +75,15 @@ phases:
           --subject "✅ CodeBuild Success: DevSecOps Reports Ready" \
           --message "$MESSAGE"
 
-      - echo "Invoking Lambda to send reports to Security Hub..."
-      - |
-        aws lambda invoke \
-          --function-name SendReportsToSecurityHub \
-          --invocation-type Event \
-          --region eu-north-1 \
-          --payload '{}' \
-          output.json
-      - echo "Lambda invoked successfully."
+      #- echo "Invoking Lambda to send reports to Security Hub..."
+      #- |
+      #  aws lambda invoke \
+      #    --function-name SendReportsToSecurityHub \
+      #    --invocation-type Event \
+      #    --region eu-north-1 \
+      #    --payload '{}' \
+      #    output.json
+      #- echo "Lambda invoked successfully."
 
 reports:
   jacoco:
