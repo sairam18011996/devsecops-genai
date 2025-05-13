@@ -1,0 +1,48 @@
+version: 0.2
+
+env:
+  variables:
+    REPORT_BUCKET: devsecopspocreports
+    REPORT_PATH: SSimpleCarRentalApp-Terraform/reports
+    SNS_TOPIC_ARN: arn:aws:sns:us-east-1:310188667383:SimpleCarRentalApp-CodeBuild-Notifications
+    
+phases:
+  install:
+    runtime-versions:
+      java: corretto17
+    commands:
+      - echo Docker is preinstalled and available.
+      - docker --version
+      - docker ps
+
+  pre_build:
+    commands:
+      - echo Running ZAP Baseline Scan...
+      - chmod +x zap-dast.sh
+      - ./zap-dast.sh
+
+  post_build:
+    commands:
+      - echo Uploading ZAP report to S3...
+      - aws s3 cp zap-report/zap-report.html s3://$REPORT_BUCKET/$REPORT_PATH/zap-report.html --sse AES256
+
+      - echo Generating presigned URL for ZAP report...
+      - export ZAP_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/zap-report.html --expires-in 86400)
+
+      - echo Sending SNS Notification...
+      - |
+        MESSAGE="⚠️ *DAST (ZAP) Report Ready* ⚠️\n\n🌐 Target: SimpleCarRentalApp-Staging\n\n📄 Report: $ZAP_URL"
+        aws sns publish \
+          --topic-arn "$SNS_TOPIC_ARN" \
+          --subject "⚠️ DAST Scan Completed (ZAP)" \
+          --message "$MESSAGE"
+
+      - echo Invoking Lambda to send all DevSecOps reports to Security Hub...
+      - |
+        aws lambda invoke \
+          --function-name SendReportsToSecurityHub \
+          --invocation-type Event \
+          --region us-east-1 \
+          --payload '{}' \
+          output.json
+      - echo Lambda invoked successfully after DAST stage.

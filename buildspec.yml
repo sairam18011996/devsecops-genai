@@ -1,0 +1,98 @@
+version: 0.2
+
+env:
+  variables:
+    REPORT_BUCKET: devsecopspocreports
+    REPORT_PATH: SSimpleCarRentalApp-Terraform/reports
+    SNS_TOPIC_ARN: arn:aws:sns:us-east-1:310188667383:SimpleCarRentalApp-CodeBuild-Notifications
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto17
+    commands:
+      - echo Installing dependencies...
+      - apt-get update
+      - apt-get install -y unzip wget zip curl
+      - echo Installing Trivy...
+      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+      - echo Preparing vulnerable JAR for scanning...
+      - mkdir -p target
+      - wget -O target/log4j-core-2.14.1.jar https://repo1.maven.org/maven2/org/apache/logging/log4j/log4j-core/2.14.1/log4j-core-2.14.1.jar
+
+  pre_build:
+    commands:
+      - echo Running Trivy SCA Scan...
+      - mkdir -p trivy-reports
+      - ./bin/trivy fs target/ --scanners vuln --vuln-type library --format json -o trivy-reports/trivy-scan-report.json || echo "Trivy scan completed with warnings, continuing..."
+
+  build:
+    commands:
+      - echo Running Maven Build with JaCoCo...
+      - mvn clean verify
+
+      - echo Fetching SonarCloud token from AWS SSM Parameter Store...
+      - export SONAR_TOKEN=$(aws ssm get-parameter --name /devsecops/sonar/token --with-decryption --query "Parameter.Value" --output text)
+      - echo Resolving Git branch for SonarCloud...
+      - |
+        if [[ "$CODEBUILD_SOURCE_VERSION" == refs/heads/* ]]; then
+          export BRANCH_NAME=$(echo $CODEBUILD_SOURCE_VERSION | sed 's#refs/heads/##')
+        else
+          export BRANCH_NAME="main"
+        fi
+        echo Using branch: $BRANCH_NAME
+
+        mvn sonar:sonar \
+          -Dsonar.projectKey=SimpleCarRentalApp \
+          -Dsonar.organization=praveenmummella \
+          -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.login=$SONAR_TOKEN \
+          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+          -Dsonar.branch.name=$BRANCH_NAME || echo "SonarCloud analysis failed, continuing..."
+
+  post_build:
+    commands:
+      - echo "Uploading JaCoCo and Trivy SCA reports to S3 with encryption..."
+      - aws s3 cp target/site/jacoco/ s3://$REPORT_BUCKET/$REPORT_PATH/jacoco/ --recursive --sse AES256
+      - aws s3 cp trivy-reports/ s3://$REPORT_BUCKET/$REPORT_PATH/trivy-sca/ --recursive --sse AES256
+
+      - echo "Zipping JaCoCo report..."
+      - zip -r jacoco-report.zip target/site/jacoco/
+
+      - echo "Uploading zipped report to S3..."
+      - aws s3 cp jacoco-report.zip s3://$REPORT_BUCKET/$REPORT_PATH/jacoco-report.zip --sse AES256
+      
+      - echo "Generating presigned URLs..."
+      - export JACOCO_ZIP_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/jacoco-report.zip --region us-east-1 --expires-in 86400)
+      - export SCA_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/trivy-sca/trivy-scan-report.json --region us-east-1 --expires-in 86400)
+
+      - echo "Sending formatted SNS notification..."
+      - |
+        MESSAGE="✅ CodeBuild completed for *SimpleCarRentalApp* ✅\n\n📦 JaCoCo Report (ZIP): $JACOCO_ZIP_URL\n\n🔍 Trivy SCA Report: $SCA_URL\n\n🔐 SonarCloud Dashboard: https://sonarcloud.io/project/overview?id=SimpleCarRentalApp"
+        aws sns publish \
+          --region us-east-1 \
+          --topic-arn "$SNS_TOPIC_ARN" \
+          --subject "✅ CodeBuild Success: DevSecOps Reports Ready" \
+          --message "$MESSAGE"
+
+      - echo "Invoking Lambda to send reports to Security Hub..."
+      - |
+        aws lambda invoke \
+          --function-name SendReportsToSecurityHub \
+          --invocation-type Event \
+          --region us-east-1 \
+          --payload '{}' \
+          output.json
+      - echo "Lambda invoked successfully."
+
+reports:
+  jacoco:
+    files:
+      - target/site/jacoco/index.html
+    base-directory: target/site/jacoco
+    discard-paths: yes
+
+artifacts:
+  files:
+    - target/ROOT.war
+  discard-paths: yes
