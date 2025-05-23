@@ -5,6 +5,7 @@ env:
     REPORT_BUCKET: devsecopsreportsgenai
     REPORT_PATH: devsecops-genai/reports
     SNS_TOPIC_ARN: arn:aws:sns:us-east-1:545779432619:devsecopsgenai
+    TARGET_URL: http://devsecopsgenai-staging.eba-3u9au2bw.us-east-1.elasticbeanstalk.com/
 
 phases:
   install:
