@@ -95,7 +95,7 @@ phases:
           --payload '{}' \
           bedrock_output.json || echo "Bedrock Lambda failed to invoke."
 
-      - echo ✅ Both Lambda functions executed (Security Hub + GenAI).
+      - echo "✅ Both Lambda functions executed (Security Hub + GenAI)."
 
 reports:
   jacoco:
