@@ -13,7 +13,8 @@ docker run --user root \
   -v "$(pwd)/$ZAP_REPORT_DIR:/zap/wrk/:rw" \
   ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
   -t "$TARGET_URL" \
-  -r zap-report.html || echo "⚠️ ZAP completed with warnings"
+  -r zap-report.html \
+  --exit-zero-if-only-warn
 
 # Ensure report exists before proceeding
 if [ ! -f "$ZAP_REPORT_DIR/zap-report.html" ]; then
