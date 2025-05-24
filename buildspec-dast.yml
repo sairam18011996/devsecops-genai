@@ -49,7 +49,6 @@ phases:
           #   --payload '{}' \
           #   output.json
           # echo "✅ Lambda invoked successfully after DAST stage."
-
         else
           echo "❌ No ZAP report found. Skipping S3 upload, SNS notification, and Lambda."
         fi
