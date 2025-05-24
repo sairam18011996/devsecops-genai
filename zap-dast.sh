@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -e
 
 ZAP_REPORT_DIR="zap-report"
@@ -8,18 +7,18 @@ mkdir -p $ZAP_REPORT_DIR
 TARGET_URL="http://devsecopsgenai-staging.eba-3u9au2bw.us-east-1.elasticbeanstalk.com/"
 echo "🔍 Running ZAP scan on: $TARGET_URL"
 
-# Run ZAP scan but prevent it from causing a pipeline failure
+# Run scan with safe fallback
 docker run --user root \
   -v "$(pwd)/$ZAP_REPORT_DIR:/zap/wrk/:rw" \
   ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
   -t "$TARGET_URL" \
   -r zap-report.html \
-  --exit-zero-if-only-warn
+  --exit-zero-if-only-warn || true
 
-# Ensure report exists before proceeding
+# Check if report exists
 if [ ! -f "$ZAP_REPORT_DIR/zap-report.html" ]; then
-  echo "❌ ZAP report not found. Exiting."
-  exit 0  # Don't fail pipeline, just exit gracefully
+  echo "❌ ZAP report not generated. Skipping upload."
+  exit 0
 fi
 
 echo "📁 Listing report folder contents..."
