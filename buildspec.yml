@@ -90,7 +90,7 @@ phases:
 reports:
   jacoco:
     files:
-      - target/site/jacoco/index.html
+      - index.html
     base-directory: target/site/jacoco
     discard-paths: yes
 
