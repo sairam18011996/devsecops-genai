@@ -7,17 +7,16 @@ mkdir -p "$ZAP_REPORT_DIR"
 TARGET_URL="http://devsecopsgenai-staging.eba-3u9au2bw.us-east-1.elasticbeanstalk.com/"
 echo "🔍 Running ZAP scan on: $TARGET_URL"
 
-# Run ZAP with better crawl behavior and debug logs
+# Run ZAP and ensure the report is written inside the mounted folder
 docker run --rm --user root \
   -v "$(pwd)/$ZAP_REPORT_DIR:/zap/wrk" \
-  ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+  ghcr.io/zaproxy/zaproxy:stable \
+  zap-baseline.py \
   -t "$TARGET_URL" \
-  -r /zap/wrk/zap-report.html \
-  -I \
-  --debug \
+  -r zap-report.html \
   --exit-zero-if-only-warn || echo "⚠️ ZAP exited with warnings"
 
-# Check if report was created
+# Confirm report exists
 if [ ! -f "$ZAP_REPORT_DIR/zap-report.html" ]; then
   echo "❌ ZAP report not generated at $ZAP_REPORT_DIR/zap-report.html"
   echo "🛑 Skipping upload to S3 and notification."
