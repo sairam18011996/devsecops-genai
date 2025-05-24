@@ -25,15 +25,16 @@ phases:
     commands:
       - echo Running Trivy SCA Scan...
       - mkdir -p trivy-reports
-      - ./bin/trivy fs target/ --scanners vuln --vuln-type library --format json -o trivy-reports/trivy-scan-report.json || echo "Trivy scan completed with warnings, continuing..."
+      - ./bin/trivy fs target/ --scanners vuln --vuln-type library --format json -o trivy-reports/trivy-scan-report.json || echo "Trivy scan completed with warnings."
 
   build:
     commands:
       - echo Running Maven Build with JaCoCo...
       - mvn clean verify
 
-      - echo Fetching SonarCloud token from AWS SSM Parameter Store...
+      - echo Fetching SonarCloud token from SSM...
       - export SONAR_TOKEN=$(aws ssm get-parameter --name /devsecops-genai/sonar/token --with-decryption --query "Parameter.Value" --output text)
+
       - echo Resolving Git branch for SonarCloud...
       - |
         if [[ "$CODEBUILD_SOURCE_VERSION" == refs/heads/* ]]; then
@@ -43,6 +44,8 @@ phases:
         fi
         echo Using branch: $BRANCH_NAME
 
+      - echo Running SonarCloud Analysis...
+      - |
         mvn sonar:sonar \
           -Dsonar.projectKey=sairam18011996_devsecops-genai \
           -Dsonar.organization=sairam \
@@ -53,21 +56,19 @@ phases:
 
   post_build:
     commands:
-      - echo "Uploading JaCoCo and Trivy SCA reports to S3 with encryption..."
+      - echo Uploading JaCoCo and Trivy reports to S3...
       - aws s3 cp target/site/jacoco/ s3://$REPORT_BUCKET/$REPORT_PATH/jacoco/ --recursive --sse AES256 --no-guess-mime-type
       - aws s3 cp trivy-reports/ s3://$REPORT_BUCKET/$REPORT_PATH/trivy-sca/ --recursive --sse AES256
 
-      - echo "Zipping JaCoCo report..."
+      - echo Zipping JaCoCo report...
       - zip -r jacoco-report.zip target/site/jacoco/
-
-      - echo "Uploading zipped report to S3..."
       - aws s3 cp jacoco-report.zip s3://$REPORT_BUCKET/$REPORT_PATH/jacoco-report.zip --sse AES256
-      
-      - echo "Generating presigned URLs..."
+
+      - echo Generating pre-signed URLs...
       - export JACOCO_ZIP_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/jacoco-report.zip --region us-east-1 --expires-in 86400)
       - export SCA_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/trivy-sca/trivy-scan-report.json --region us-east-1 --expires-in 86400)
 
-      - echo "Sending formatted SNS notification..."
+      - echo Sending SNS Notification...
       - |
         MESSAGE="✅ CodeBuild completed for *DevSecOps GenAI* ✅\n\n📦 JaCoCo Report (ZIP): $JACOCO_ZIP_URL\n\n🔍 Trivy SCA Report: $SCA_URL\n\n🔐 SonarCloud Dashboard: https://sonarcloud.io/project/overview?id=sairam18011996_devsecops-genai"
         aws sns publish \
@@ -75,6 +76,16 @@ phases:
           --topic-arn "$SNS_TOPIC_ARN" \
           --subject "✅ CodeBuild Success: DevSecOps Reports Ready" \
           --message "$MESSAGE"
+
+      - echo Invoking Lambda to send DevSecOps findings to AWS Security Hub...
+      - |
+        aws lambda invoke \
+          --function-name SendReportsToSecurityHub \
+          --region us-east-1 \
+          --invocation-type Event \
+          --payload '{}' \
+          output.json
+      - echo Lambda invoked successfully.
 
 reports:
   jacoco:
