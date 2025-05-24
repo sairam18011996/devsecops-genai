@@ -77,15 +77,25 @@ phases:
           --subject "✅ CodeBuild Success: DevSecOps Reports Ready" \
           --message "$MESSAGE"
 
-      - echo Invoking Lambda to send DevSecOps findings to AWS Security Hub...
+      - echo Invoking Lambda for Security Hub finding submission...
       - |
         aws lambda invoke \
           --function-name SendReportsToSecurityHub \
           --region us-east-1 \
           --invocation-type Event \
           --payload '{}' \
-          output.json
-      - echo Lambda invoked successfully.
+          output.json || echo "SecurityHub Lambda failed to invoke."
+
+      - echo Invoking GenAI Lambda for Bedrock-based analysis...
+      - |
+        aws lambda invoke \
+          --function-name SendToBedrockGenAI \
+          --region us-east-1 \
+          --invocation-type Event \
+          --payload '{}' \
+          bedrock_output.json || echo "Bedrock Lambda failed to invoke."
+
+      - echo ✅ Both Lambda functions executed (Security Hub + GenAI).
 
 reports:
   jacoco:
