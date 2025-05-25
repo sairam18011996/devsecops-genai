@@ -72,19 +72,7 @@ phases:
 
       - echo Preparing SNS message...
       - |
-        cat <<EOF > message.txt
-✅ CodeBuild completed for *DevSecOps GenAI* ✅
-
-📦 JaCoCo Report (ZIP): $JACOCO_ZIP_URL
-
-🔍 Trivy SCA Report (JSON): $SCA_URL
-
-🧠 GenAI SCA Remediation (Text): $GENAI_SCA_URL
-
-🧪 GenAI Code Coverage Test Suggestions: $GENAI_COVERAGE_URL
-
-🔐 SonarCloud Dashboard: https://sonarcloud.io/project/overview?id=sairam18011996_devsecops-genai
-EOF
+        echo -e "✅ CodeBuild completed for *DevSecOps GenAI* ✅\n\n📦 JaCoCo Report (ZIP): $JACOCO_ZIP_URL\n\n🔍 Trivy SCA Report (JSON): $SCA_URL\n\n🧠 GenAI SCA Remediation (Text): $GENAI_SCA_URL\n\n🧪 GenAI Code Coverage Test Suggestions: $GENAI_COVERAGE_URL\n\n🔐 SonarCloud Dashboard: https://sonarcloud.io/project/overview?id=sairam18011996_devsecops-genai" > message.txt
 
       - echo Sending SNS Notification...
       - |
