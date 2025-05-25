@@ -70,9 +70,10 @@ phases:
       - export GENAI_SCA_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/genai-sca.txt --region us-east-1 --expires-in 86400)
       - export GENAI_COVERAGE_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/genai-coverage.txt --region us-east-1 --expires-in 86400)
 
-      - echo Sending SNS Notification...
+      - echo Preparing SNS message...
       - |
-        MESSAGE="✅ CodeBuild completed for *DevSecOps GenAI* ✅
+        MESSAGE=$(cat <<EOF
+✅ CodeBuild completed for *DevSecOps GenAI* ✅
 
 📦 JaCoCo Report (ZIP): $JACOCO_ZIP_URL
 
@@ -82,7 +83,12 @@ phases:
 
 🧪 GenAI Code Coverage Test Suggestions: $GENAI_COVERAGE_URL
 
-🔐 SonarCloud Dashboard: https://sonarcloud.io/project/overview?id=sairam18011996_devsecops-genai"
+🔐 SonarCloud Dashboard: https://sonarcloud.io/project/overview?id=sairam18011996_devsecops-genai
+EOF
+)
+
+      - echo Sending SNS Notification...
+      - |
         aws sns publish \
           --region us-east-1 \
           --topic-arn "$SNS_TOPIC_ARN" \
