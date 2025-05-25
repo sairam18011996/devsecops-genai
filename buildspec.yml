@@ -72,7 +72,7 @@ phases:
 
       - echo Preparing SNS message...
       - |
-        MESSAGE=$(cat <<EOF
+        cat <<EOF > message.txt
 ✅ CodeBuild completed for *DevSecOps GenAI* ✅
 
 📦 JaCoCo Report (ZIP): $JACOCO_ZIP_URL
@@ -85,7 +85,6 @@ phases:
 
 🔐 SonarCloud Dashboard: https://sonarcloud.io/project/overview?id=sairam18011996_devsecops-genai
 EOF
-)
 
       - echo Sending SNS Notification...
       - |
@@ -93,7 +92,7 @@ EOF
           --region us-east-1 \
           --topic-arn "$SNS_TOPIC_ARN" \
           --subject "✅ CodeBuild Success: DevSecOps Reports with GenAI" \
-          --message "$MESSAGE"
+          --message file://message.txt
 
       - echo Invoking Lambda for Security Hub finding submission...
       - |
