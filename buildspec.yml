@@ -67,14 +67,26 @@ phases:
       - echo Generating pre-signed URLs...
       - export JACOCO_ZIP_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/jacoco-report.zip --region us-east-1 --expires-in 86400)
       - export SCA_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/trivy-sca/trivy-scan-report.json --region us-east-1 --expires-in 86400)
+      - export GENAI_SCA_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/genai-sca.txt --region us-east-1 --expires-in 86400)
+      - export GENAI_COVERAGE_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/genai-coverage.txt --region us-east-1 --expires-in 86400)
 
       - echo Sending SNS Notification...
       - |
-        MESSAGE="✅ CodeBuild completed for *DevSecOps GenAI* ✅\n\n📦 JaCoCo Report (ZIP): $JACOCO_ZIP_URL\n\n🔍 Trivy SCA Report: $SCA_URL\n\n🔐 SonarCloud Dashboard: https://sonarcloud.io/project/overview?id=sairam18011996_devsecops-genai"
+        MESSAGE="✅ CodeBuild completed for *DevSecOps GenAI* ✅
+
+📦 JaCoCo Report (ZIP): $JACOCO_ZIP_URL
+
+🔍 Trivy SCA Report (JSON): $SCA_URL
+
+🧠 GenAI SCA Remediation (Text): $GENAI_SCA_URL
+
+🧪 GenAI Code Coverage Test Suggestions: $GENAI_COVERAGE_URL
+
+🔐 SonarCloud Dashboard: https://sonarcloud.io/project/overview?id=sairam18011996_devsecops-genai"
         aws sns publish \
           --region us-east-1 \
           --topic-arn "$SNS_TOPIC_ARN" \
-          --subject "✅ CodeBuild Success: DevSecOps Reports Ready" \
+          --subject "✅ CodeBuild Success: DevSecOps Reports with GenAI" \
           --message "$MESSAGE"
 
       - echo Invoking Lambda for Security Hub finding submission...
