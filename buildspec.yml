@@ -64,7 +64,7 @@ phases:
       - zip -r jacoco-report.zip target/site/jacoco/
       - aws s3 cp jacoco-report.zip s3://$REPORT_BUCKET/$REPORT_PATH/jacoco-report.zip --sse AES256
 
-            - echo Fetching SonarCloud issues from Web API...
+      - echo Fetching SonarCloud issues from Web API...
       - |
         export SONAR_TOKEN=$(aws ssm get-parameter --name /devsecops-genai/sonar/token --with-decryption --query "Parameter.Value" --output text)
 
