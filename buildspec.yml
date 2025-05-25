@@ -64,11 +64,12 @@ phases:
       - zip -r jacoco-report.zip target/site/jacoco/
       - aws s3 cp jacoco-report.zip s3://$REPORT_BUCKET/$REPORT_PATH/jacoco-report.zip --sse AES256
 
-      - echo Generating pre-signed URLs...
-      - export JACOCO_ZIP_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/jacoco-report.zip --region us-east-1 --expires-in 86400)
-      - export SCA_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/trivy-sca/trivy-scan-report.json --region us-east-1 --expires-in 86400)
-      - export GENAI_SCA_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/genai-sca.txt --region us-east-1 --expires-in 86400)
-      - export GENAI_COVERAGE_URL=$(aws s3 presign s3://$REPORT_BUCKET/$REPORT_PATH/genai-coverage.txt --region us-east-1 --expires-in 86400)
+      - echo Fetching SonarCloud issues from Web API...
+      - |
+        curl -u $SONAR_TOKEN: \
+          "https://sonarcloud.io/api/issues/search?componentKeys=sairam18011996_devsecops-genai&types=BUG,VULNERABILITY,CODE_SMELL&resolved=false&ps=50" \
+          -o sonarcloud-issues.json
+        aws s3 cp sonarcloud-issues.json s3://$REPORT_BUCKET/$REPORT_PATH/sonarcloud/sonarcloud-issues.json --sse AES256
 
       - echo Preparing SNS message...
       - |
@@ -100,7 +101,7 @@ phases:
           --payload '{}' \
           bedrock_output.json || echo "Bedrock Lambda failed to invoke."
 
-      - echo "✅ Both Lambda functions executed (Security Hub + GenAI)."
+      - echo "✅ All reports processed and uploaded successfully."
 
 reports:
   jacoco:
