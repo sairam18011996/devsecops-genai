@@ -64,11 +64,20 @@ phases:
       - zip -r jacoco-report.zip target/site/jacoco/
       - aws s3 cp jacoco-report.zip s3://$REPORT_BUCKET/$REPORT_PATH/jacoco-report.zip --sse AES256
 
-      - echo Fetching SonarCloud issues from Web API...
+            - echo Fetching SonarCloud issues from Web API...
       - |
-        curl -u $SONAR_TOKEN: \
-          "https://sonarcloud.io/api/issues/search?componentKeys=sairam18011996_devsecops-genai&types=BUG,VULNERABILITY,CODE_SMELL&resolved=false&ps=50" \
-          -o sonarcloud-issues.json
+        export SONAR_TOKEN=$(aws ssm get-parameter --name /devsecops-genai/sonar/token --with-decryption --query "Parameter.Value" --output text)
+
+        HTTP_CODE=$(curl -s -w "%{http_code}" -o sonarcloud-issues.json \
+          -u $SONAR_TOKEN: \
+          "https://sonarcloud.io/api/issues/search?componentKeys=sairam18011996_devsecops-genai&types=BUG,VULNERABILITY,CODE_SMELL&resolved=false&ps=50")
+
+        if [[ "$HTTP_CODE" != "200" ]]; then
+          echo "❌ SonarCloud API call failed with status code $HTTP_CODE"
+          exit 1
+        fi
+
+        echo "✅ SonarCloud issues fetched successfully."
         aws s3 cp sonarcloud-issues.json s3://$REPORT_BUCKET/$REPORT_PATH/sonarcloud/sonarcloud-issues.json --sse AES256
 
       - echo Preparing SNS message...
