@@ -37,15 +37,24 @@ phases:
           --subject "⚠️ DAST Scan Completed (ZAP)" \
           --message "$MESSAGE"
 
-      - echo "[Post-Build] Invoking Lambda to send all DevSecOps reports to Security Hub..."
+      - echo "[Post-Build] Invoking GenAI Lambda for DevSecOps report analysis..."
+      - |
+        aws lambda invoke \
+          --function-name SendToBedrockGenAI \
+          --invocation-type Event \
+          --region us-east-1 \
+          --payload '{}' \
+          output_genai.json
+      - echo "[Post-Build] GenAI Lambda invoked successfully."
+
+      - echo "[Post-Build] Invoking Lambda to send reports to Security Hub..."
       - |
         aws lambda invoke \
           --function-name SendReportsToSecurityHub \
           --invocation-type Event \
           --region us-east-1 \
           --payload '{}' \
-          output.json
-      - echo "[Post-Build] Lambda invoked successfully after DAST stage."
-      
-      # ✅ FINAL override: make sure CodeBuild exits successfully
+          output_sh.json
+      - echo "[Post-Build] Lambda invoked successfully for Security Hub."
+
       - exit 0
